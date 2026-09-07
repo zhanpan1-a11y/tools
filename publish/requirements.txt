@@ -1,4 +1,0 @@
-pyautogui
-pyperclip
-pynput
-pyinstaller
