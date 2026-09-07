@@ -12,15 +12,15 @@ jobs:
         os: [windows-latest, macos-latest]
         include:
           - os: windows-latest
-            output_name: AutoInteractionTool_Windows.exe
-            pyinstaller_args: --onefile --windowed --icon=icon.ico
+            pyinstaller_args: --onefile --windowed
             artifact_name: Windows-Executable
             artifact_path: dist/main.exe
+            output_name: AutoInteractionTool_Windows.exe
           - os: macos-latest
-            output_name: AutoInteractionTool_macOS.app
-            pyinstaller_args: --onefile --windowed
+            pyinstaller_args: --onedir --windowed --icon=icon.icns --osx-bundle-identifier com.zhanpan1.autotool
             artifact_name: macOS-Application
             artifact_path: dist/main.app
+            output_name: AutoInteractionTool_macOS.zip
 
     runs-on: ${{ matrix.os }}
 
@@ -43,13 +43,22 @@ jobs:
         pyinstaller --noconfirm ${{ matrix.pyinstaller_args }} main.py
       shell: bash
 
-    - name: Rename output (optional)
+    - name: Prepare artifact (Windows)
+      if: matrix.os == 'windows-latest'
       run: |
-        mv ${{ matrix.artifact_path }} ${{ matrix.output_name }} || true
+        mv ${{ matrix.artifact_path }} ${{ matrix.output_name }}
+      shell: bash
+
+    - name: Prepare artifact (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        cd dist
+        zip -r ${{ matrix.output_name }} main.app
+        cd ..
       shell: bash
 
     - name: Upload artifact
       uses: actions/upload-artifact@v6
       with:
         name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.output_name }}
+        path: ${{ matrix.os == 'macos-latest' && format('dist/{0}', matrix.output_name) || matrix.output_name }}
