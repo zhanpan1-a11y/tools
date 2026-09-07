@@ -6,59 +6,50 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [windows-latest, macos-latest]
-        include:
-          - os: windows-latest
-            pyinstaller_args: --onefile --windowed
-            artifact_name: Windows-Executable
-            artifact_path: dist/main.exe
-            output_name: AutoInteractionTool_Windows.exe
-          - os: macos-latest
-            pyinstaller_args: --onedir --windowed --icon=icon.icns --osx-bundle-identifier com.zhanpan1.autotool
-            artifact_name: macOS-Application
-            artifact_path: dist/main.app
-            output_name: AutoInteractionTool_macOS.zip
-
-    runs-on: ${{ matrix.os }}
-
+  build-windows:
+    runs-on: windows-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v5
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: Windows-Executable
+          path: dist/main.exe
 
-    - name: Set up Python
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Build with PyInstaller
-      run: |
-        pyinstaller --noconfirm ${{ matrix.pyinstaller_args }} main.py
-      shell: bash
-
-    - name: Prepare artifact (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        mv ${{ matrix.artifact_path }} ${{ matrix.output_name }}
-      shell: bash
-
-    - name: Prepare artifact (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        cd dist
-        zip -r ${{ matrix.output_name }} main.app
-        cd ..
-      shell: bash
-
-    - name: Upload artifact
-      uses: actions/upload-artifact@v6
-      with:
-        name: ${{ matrix.artifact_name }}
-        path: ${{ matrix.os == 'macos-latest' && format('dist/{0}', matrix.output_name) || matrix.output_name }}
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Build with PyInstaller (no icon)
+        run: |
+          pyinstaller --noconfirm --onedir --windowed main.py
+      - name: Compress .app
+        run: |
+          cd dist
+          zip -r AutoInteractionTool_macOS.zip main.app
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: macOS-Application
+          path: dist/AutoInteractionTool_macOS.zip
