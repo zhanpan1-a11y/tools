@@ -1,4 +1,4 @@
-name: Build Windows EXE with PyInstaller
+name: Build EXE for Windows and macOS
 
 on:
   push:
@@ -7,14 +7,29 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        include:
+          - os: windows-latest
+            output_name: AutoInteractionTool_Windows.exe
+            pyinstaller_args: --onefile --windowed --icon=icon.ico
+            artifact_name: Windows-Executable
+            artifact_path: dist/main.exe
+          - os: macos-latest
+            output_name: AutoInteractionTool_macOS.app
+            pyinstaller_args: --onefile --windowed
+            artifact_name: macOS-Application
+            artifact_path: dist/main.app
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: '3.11'
 
@@ -25,10 +40,16 @@ jobs:
 
     - name: Build with PyInstaller
       run: |
-        pyinstaller --noconfirm --onefile --windowed --icon=icon.ico main.py
+        pyinstaller --noconfirm ${{ matrix.pyinstaller_args }} main.py
+      shell: bash
 
-    - name: Upload EXE Artifact
-      uses: actions/upload-artifact@v4
+    - name: Rename output (optional)
+      run: |
+        mv ${{ matrix.artifact_path }} ${{ matrix.output_name }} || true
+      shell: bash
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v6
       with:
-        name: Windows-Executable
-        path: dist/main.exe
+        name: ${{ matrix.artifact_name }}
+        path: ${{ matrix.output_name }}
